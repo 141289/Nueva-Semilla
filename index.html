@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nueva Semilla - Gestión de Facturas</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS para Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Chart.js para gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background-color: #f8fafc; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- ENCABEZADO Y HEADER -->
+  <header class="bg-emerald-700 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-3">
+      <div class="flex items-center gap-3">
+        <div class="bg-white p-2 rounded-lg text-emerald-700 font-black text-xl shadow-sm">🌱</div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight">Nueva Semilla</h1>
+          <p class="text-xs text-emerald-100">Gestión e Ingesta de Facturas y Comprobantes</p>
+        </div>
+      </div>
+
+      <!-- Selector de Usuario Activo -->
+      <div class="flex items-center gap-2 bg-emerald-800/80 px-3 py-1.5 rounded-lg border border-emerald-600/50 text-sm">
+        <i class="fa-solid fa-user-circle text-emerald-200 text-lg"></i>
+        <span class="text-xs text-emerald-200">Usuario:</span>
+        <select id="userSelector" onchange="changeUser(this.value)" class="bg-transparent text-white font-semibold text-sm outline-none cursor-pointer">
+          <option value="Administración" class="text-slate-800">Administración</option>
+          <option value="Facturación" class="text-slate-800">Facturación</option>
+          <option value="Gerencia" class="text-slate-800">Gerencia</option>
+          <option value="Nuevo..." class="text-slate-800">+ Agregar Usuario</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full space-y-6">
+
+    <!-- MÉTRICAS Y RESUMEN -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase">Total Facturado</p>
+          <h3 id="statTotal" class="text-2xl font-bold text-slate-900 mt-1">$0,00</h3>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+          <i class="fa-solid fa-receipt"></i>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase">Pendiente de Pago</p>
+          <h3 id="statPending" class="text-2xl font-bold text-amber-600 mt-1">$0,00</h3>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+          <i class="fa-solid fa-clock"></i>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase">Total Pagado</p>
+          <h3 id="statPaid" class="text-2xl font-bold text-emerald-600 mt-1">$0,00</h3>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+          <i class="fa-solid fa-check-circle"></i>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase">Cant. Facturas</p>
+          <h3 id="statCount" class="text-2xl font-bold text-slate-700 mt-1">0</h3>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold">
+          <i class="fa-solid fa-file-invoice"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- BARRA DE ACCIONES Y BOTONES -->
+    <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+      <div class="flex flex-wrap gap-2">
+        <button onclick="openFormModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 shadow-sm">
+          <i class="fa-solid fa-plus"></i> Nueva Factura
+        </button>
+        <button onclick="openImportModal()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-medium px-4 py-2 rounded-lg text-sm transition flex items-center gap-2">
+          <i class="fa-solid fa-file-excel"></i> Importar Excel / CSV
+        </button>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <button id="btnDeleteSelected" onclick="deleteSelectedInvoices()" class="hidden bg-rose-600 hover:bg-rose-700 text-white font-medium px-3 py-2 rounded-lg text-sm transition flex items-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-trash"></i> Eliminar Selección (<span id="selectedCount">0</span>)
+        </button>
+        <button onclick="exportToExcel()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-3 py-2 rounded-lg text-sm transition flex items-center gap-1.5">
+          <i class="fa-solid fa-download"></i> Exportar
+        </button>
+      </div>
+    </div>
+
+    <!-- FILTROS Y BÚSQUEDA -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <input type="text" id="filterSearch" oninput="applyFilters()" placeholder="Buscar proveedor o N°..." class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+        
+        <select id="filterStatus" onchange="applyFilters()" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+          <option value="">Todos los Estados</option>
+          <option value="Pendiente">Pendiente</option>
+          <option value="Pagada">Pagada</option>
+          <option value="Vencida">Vencida</option>
+        </select>
+
+        <select id="filterCategory" onchange="applyFilters()" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+          <option value="">Todas las Categorías</option>
+          <option value="Insumos">Insumos</option>
+          <option value="Servicios">Servicios</option>
+          <option value="Mantenimiento">Mantenimiento</option>
+          <option value="Fletes">Fletes</option>
+          <option value="Impuestos">Impuestos</option>
+          <option value="Otros">Otros</option>
+        </select>
+
+        <input type="date" id="filterDateFrom" onchange="applyFilters()" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+        <input type="date" id="filterDateTo" onchange="applyFilters()" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+    </div>
+
+    <!-- TABLA DE FACTURAS -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-left text-sm text-slate-600">
+          <thead class="bg-slate-50 text-xs text-slate-500 uppercase border-b border-slate-200">
+            <tr>
+              <th class="p-4 w-10">
+                <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer">
+              </th>
+              <th class="p-4">Fecha Emisión</th>
+              <th class="p-4">Proveedor</th>
+              <th class="p-4">N° Factura</th>
+              <th class="p-4">Categoría</th>
+              <th class="p-4">Monto Total</th>
+              <th class="p-4">Estado</th>
+              <th class="p-4">Adjuntos</th>
+              <th class="p-4 text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="invoicesTableBody" class="divide-y divide-slate-100">
+            <!-- Filas dinámicas -->
+          </tbody>
+        </table>
+      </div>
+      <div id="emptyState" class="hidden p-8 text-center text-slate-400">
+        <i class="fa-solid fa-folder-open text-4xl mb-2"></i>
+        <p>No se encontraron facturas registradas.</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL: AGREGAR / EDITAR FACTURA -->
+  <div id="formModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 id="formModalTitle" class="text-lg font-bold text-slate-800">Cargar Nueva Factura</h3>
+        <button onclick="closeFormModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+
+      <form id="invoiceForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+        <input type="hidden" id="editInvoiceId">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Proveedor *</label>
+            <input type="text" id="inputSupplier" required placeholder="Ej. AgroServicios S.A." class="w-full text-sm border border-slate-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Número de Factura *</label>
+            <input type="text" id="inputNumber" required placeholder="0001-00012345" class="w-full text-sm border border-slate-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Emisión *</label>
+            <input type="date" id="inputIssueDate" required class="w-full text-sm border border-slate-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Vencimiento</label>
+            <input type="date" id="inputDueDate" class="w-full text-sm border border-slate-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Monto Total ($) *</label>
+            <input type="number" step="0.01" id="inputAmount" required placeholder="0.00" class="w-full text-sm border border-slate-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-emerald-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Categoría / Rubro *</label>
+            <select id="inputCategory" required class="w-full text-sm border border-slate-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-emerald-500">
+              <option value="Insumos">Insumos</option>
+              <option value="Servicios">Servicios</option>
+              <option value="Mantenimiento">Mantenimiento</option>
+              <option value="Fletes">Fletes</option>
+              <option value="Impuestos">Impuestos</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Estado de Pago *</label>
+            <select id="inputStatus" required class="w-full text-sm border border-slate-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-emerald-500">
+              <option value="Pendiente">Pendiente</option>
+              <option value="Pagada">Pagada</option>
+              <option value="Vencida">Vencida</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-100 pt-3 space-y-3">
+          <p class="text-xs font-bold text-slate-700">Adjuntar Archivos / Fotos</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">Foto o PDF de Factura</label>
+              <input type="file" id="inputFileInvoice" accept="image/*,.pdf" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-1">Comprobante de Pago</label>
+              <input type="file" id="inputFilePayment" accept="image/*,.pdf" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-4 border-t">
+          <button type="button" onclick="closeFormModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+          <button type="submit" class="px-5 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg shadow-sm">Guardar Registro</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: IMPORTAR EXCEL -->
+  <div id="importModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="text-lg font-bold text-slate-800">Importación Masiva desde Excel / CSV</h3>
+        <button onclick="closeImportModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="border-2 border-dashed border-emerald-300 rounded-xl p-6 text-center bg-emerald-50/50 space-y-2">
+        <i class="fa-solid fa-file-excel text-4xl text-emerald-600"></i>
+        <p class="text-sm font-medium text-slate-700">Arrastra tu archivo Excel (.xlsx, .xls) o CSV aquí</p>
+        <p class="text-xs text-slate-400">O haz clic para seleccionar el archivo desde tu computadora</p>
+        <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="hidden">
+        <button onclick="document.getElementById('excelFileInput').click()" class="mt-2 px-4 py-2 bg-white text-emerald-700 border border-emerald-300 font-medium text-xs rounded-lg shadow-sm hover:bg-emerald-50">Seleccionar Archivo</button>
+      </div>
+
+      <div id="excelPreviewContainer" class="hidden space-y-3 border-t pt-4">
+        <h4 class="text-xs font-bold text-slate-700 uppercase">Previsualización de registros a cargar:</h4>
+        <div class="max-h-48 overflow-y-auto border rounded-lg">
+          <table class="w-full text-xs text-left text-slate-600">
+            <thead class="bg-slate-100 text-slate-500 uppercase sticky top-0">
+              <tr>
+                <th class="p-2">Proveedor</th>
+                <th class="p-2">Factura N°</th>
+                <th class="p-2">Fecha</th>
+                <th class="p-2">Monto</th>
+                <th class="p-2">Estado</th>
+              </tr>
+            </thead>
+            <tbody id="excelPreviewBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="closeImportModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+          <button onclick="confirmExcelImport()" class="px-5 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg shadow-sm">Confirmar e Importar Todo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT DE LÓGICA PRINCIPAL -->
+  <script>
+    // Variables de Estado
+    let invoices = [];
+    let selectedIds = new Set();
+    let currentActiveUser = "Administración";
+    let tempExcelData = [];
+
+    // Cargar datos al iniciar
+    window.addEventListener('DOMContentLoaded', () => {
+      loadInvoicesFromStorage();
+      renderApp();
+    });
+
+    // Almacenamiento Local
+    function loadInvoicesFromStorage() {
+      try {
+        const saved = localStorage.getItem('nueva_semilla_invoices');
+        invoices = saved ? JSON.parse(saved) : getDemoData();
+      } catch (e) {
+        console.error("Error al cargar de localStorage:", e);
+        invoices = getDemoData();
+      }
+    }
+
+    function saveInvoicesToStorage() {
+      try {
+        localStorage.setItem('nueva_semilla_invoices', JSON.stringify(invoices));
+      } catch (e) {
+        console.error("Error al guardar en localStorage:", e);
+      }
+    }
+
+    // Datos Demo por defecto para la empresa
+    function getDemoData() {
+      return [
+        {
+          id: "inv_1",
+          supplier: "Fertilizantes del Salado S.A.",
+          number: "0001-00004512",
+          issueDate: "2026-10-15",
+          dueDate: "2026-11-15",
+          amount: 450000.00,
+          category: "Insumos",
+          status: "Pendiente",
+          userCreated: "Administración",
+          invoiceFile: null,
+          paymentFile: null
+        },
+        {
+          id: "inv_2",
+          supplier: "Servicios Agrícolas Chacabuco",
+          number: "0003-00001189",
+          issueDate: "2026-10-01",
+          dueDate: "2026-10-20",
+          amount: 125000.50,
+          category: "Servicios",
+          status: "Pagada",
+          userCreated: "Facturación",
+          invoiceFile: null,
+          paymentFile: null
+        }
+      ];
+    }
+
+    // Renderizado general
+    function renderApp() {
+      applyFilters();
+      updateMetrics();
+    }
+
+    // Métricas
+    function updateMetrics() {
+      const total = invoices.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+      const pending = invoices.filter(i => i.status === 'Pendiente' || i.status === 'Vencida').reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+      const paid = invoices.filter(i => i.status === 'Pagada').reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+
+      document.getElementById('statTotal').innerText = formatCurrency(total);
+      document.getElementById('statPending').innerText = formatCurrency(pending);
+      document.getElementById('statPaid').innerText = formatCurrency(paid);
+      document.getElementById('statCount').innerText = invoices.length;
+    }
+
+    function formatCurrency(val) {
+      return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(val);
+    }
+
+    // Filtrado y Renderizado de Tabla
+    function applyFilters() {
+      const search = document.getElementById('filterSearch').value.toLowerCase();
+      const status = document.getElementById('filterStatus').value;
+      const category = document.getElementById('filterCategory').value;
+      const dateFrom = document.getElementById('filterDateFrom').value;
+      const dateTo = document.getElementById('filterDateTo').value;
+
+      const filtered = invoices.filter(inv => {
+        const matchesSearch = inv.supplier.toLowerCase().includes(search) || inv.number.toLowerCase().includes(search);
+        const matchesStatus = status === '' || inv.status === status;
+        const matchesCategory = category === '' || inv.category === category;
+        const matchesDateFrom = !dateFrom || inv.issueDate >= dateFrom;
+        const matchesDateTo = !dateTo || inv.issueDate <= dateTo;
+
+        return matchesSearch && matchesStatus && matchesCategory && matchesDateFrom && matchesDateTo;
+      });
+
+      renderTable(filtered);
+    }
+
+    function renderTable(list) {
+      const tbody = document.getElementById('invoicesTableBody');
+      const emptyState = document.getElementById('emptyState');
+      tbody.innerHTML = '';
+
+      if (list.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      } else {
+        emptyState.classList.add('hidden');
+      }
+
+      list.forEach(inv => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+
+        const isChecked = selectedIds.has(inv.id);
+
+        let statusBadge = '';
+        if (inv.status === 'Pagada') {
+          statusBadge = '<span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-semibold">Pagada</span>';
+        } else if (inv.status === 'Vencida') {
+          statusBadge = '<span class="px-2.5 py-1 bg-rose-100 text-rose-800 rounded-full text-xs font-semibold">Vencida</span>';
+        } else {
+          statusBadge = '<span class="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold">Pendiente</span>';
+        }
+
+        tr.innerHTML = `
+          <td class="p-4">
+            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectOne('${inv.id}', this.checked)" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer">
+          </td>
+          <td class="p-4 font-medium text-slate-900">${inv.issueDate || '-'}</td>
+          <td class="p-4">
+            <div class="font-bold text-slate-800">${escapeHtml(inv.supplier)}</div>
+            <div class="text-xs text-slate-400">Por: ${escapeHtml(inv.userCreated || 'Admin')}</div>
+          </td>
+          <td class="p-4 font-mono text-xs text-slate-600">${escapeHtml(inv.number)}</td>
+          <td class="p-4"><span class="px-2 py-0.5 bg-slate-100 rounded text-xs text-slate-600">${escapeHtml(inv.category)}</span></td>
+          <td class="p-4 font-bold text-slate-900">${formatCurrency(inv.amount)}</td>
+          <td class="p-4">${statusBadge}</td>
+          <td class="p-4 text-xs space-x-1">
+            ${inv.invoiceFile ? `<button onclick="viewFile('${inv.invoiceFile}')" class="text-blue-600 hover:underline"><i class="fa-solid fa-file font-normal"></i> Factura</button>` : '<span class="text-slate-300">-</span>'}
+            ${inv.paymentFile ? `<button onclick="viewFile('${inv.paymentFile}')" class="text-emerald-600 hover:underline"><i class="fa-solid fa-receipt font-normal"></i> Pago</button>` : ''}
+          </td>
+          <td class="p-4 text-center">
+            <div class="flex items-center justify-center gap-2">
+              <button onclick="editInvoice('${inv.id}')" title="Editar" class="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-slate-100 rounded">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button onclick="deleteSingleInvoice('${inv.id}')" title="Eliminar" class="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-slate-100 rounded">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Selección múltiple y eliminación
+    function toggleSelectOne(id, checked) {
+      if (checked) {
+        selectedIds.add(id);
+      } else {
+        selectedIds.delete(id);
+      }
+      updateDeleteSelectedButton();
+    }
+
+    function toggleSelectAll(checked) {
+      if (checked) {
+        invoices.forEach(i => selectedIds.add(i.id));
+      } else {
+        selectedIds.clear();
+      }
+      applyFilters();
+      updateDeleteSelectedButton();
+    }
+
+    function updateDeleteSelectedButton() {
+      const btn = document.getElementById('btnDeleteSelected');
+      const countSpan = document.getElementById('selectedCount');
+      if (selectedIds.size > 0) {
+        btn.classList.remove('hidden');
+        countSpan.innerText = selectedIds.size;
+      } else {
+        btn.classList.add('hidden');
+      }
+    }
+
+    function deleteSingleInvoice(id) {
+      if (confirm('¿Estás seguro de que deseas eliminar esta factura?')) {
+        invoices = invoices.filter(i => i.id !== id);
+        selectedIds.delete(id);
+        saveInvoicesToStorage();
+        renderApp();
+      }
+    }
+
+    function deleteSelectedInvoices() {
+      if (confirm(`¿Estás seguro de eliminar las ${selectedIds.size} facturas seleccionadas?`)) {
+        invoices = invoices.filter(i => !selectedIds.has(i.id));
+        selectedIds.clear();
+        saveInvoicesToStorage();
+        updateDeleteSelectedButton();
+        renderApp();
+      }
+    }
+
+    // Manejo de Modal de Formulario
+    function openFormModal() {
+      document.getElementById('invoiceForm').reset();
+      document.getElementById('editInvoiceId').value = '';
+      document.getElementById('formModalTitle').innerText = 'Cargar Nueva Factura';
+      document.getElementById('formModal').classList.remove('hidden');
+    }
+
+    function closeFormModal() {
+      document.getElementById('formModal').classList.add('hidden');
+    }
+
+    function editInvoice(id) {
+      const inv = invoices.find(i => i.id === id);
+      if (!inv) return;
+
+      document.getElementById('editInvoiceId').value = inv.id;
+      document.getElementById('inputSupplier').value = inv.supplier;
+      document.getElementById('inputNumber').value = inv.number;
+      document.getElementById('inputIssueDate').value = inv.issueDate;
+      document.getElementById('inputDueDate').value = inv.dueDate || '';
+      document.getElementById('inputAmount').value = inv.amount;
+      document.getElementById('inputCategory').value = inv.category;
+      document.getElementById('inputStatus').value = inv.status;
+
+      document.getElementById('formModalTitle').innerText = 'Editar Factura';
+      document.getElementById('formModal').classList.remove('hidden');
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+
+      const editId = document.getElementById('editInvoiceId').value;
+      const invoiceFileEl = document.getElementById('inputFileInvoice');
+      const paymentFileEl = document.getElementById('inputFilePayment');
+
+      let invoiceFileBase64 = null;
+      let paymentFileBase64 = null;
+
+      if (invoiceFileEl.files[0]) {
+        invoiceFileBase64 = await readFileAsBase64(invoiceFileEl.files[0]);
+      }
+      if (paymentFileEl.files[0]) {
+        paymentFileBase64 = await readFileAsBase64(paymentFileEl.files[0]);
+      }
+
+      if (editId) {
+        // Modo edición
+        const index = invoices.findIndex(i => i.id === editId);
+        if (index !== -1) {
+          invoices[index] = {
+            ...invoices[index],
+            supplier: document.getElementById('inputSupplier').value,
+            number: document.getElementById('inputNumber').value,
+            issueDate: document.getElementById('inputIssueDate').value,
+            dueDate: document.getElementById('inputDueDate').value,
+            amount: parseFloat(document.getElementById('inputAmount').value) || 0,
+            category: document.getElementById('inputCategory').value,
+            status: document.getElementById('inputStatus').value,
+            invoiceFile: invoiceFileBase64 || invoices[index].invoiceFile,
+            paymentFile: paymentFileBase64 || invoices[index].paymentFile
+          };
+        }
+      } else {
+        // Nueva Factura
+        const newInvoice = {
+          id: 'inv_' + Date.now(),
+          supplier: document.getElementById('inputSupplier').value,
+          number: document.getElementById('inputNumber').value,
+          issueDate: document.getElementById('inputIssueDate').value,
+          dueDate: document.getElementById('inputDueDate').value,
+          amount: parseFloat(document.getElementById('inputAmount').value) || 0,
+          category: document.getElementById('inputCategory').value,
+          status: document.getElementById('inputStatus').value,
+          userCreated: currentActiveUser,
+          invoiceFile: invoiceFileBase64,
+          paymentFile: paymentFileBase64
+        };
+        invoices.unshift(newInvoice);
+      }
+
+      saveInvoicesToStorage();
+      closeFormModal();
+      renderApp();
+    }
+
+    // Importación Excel / CSV
+    function openImportModal() {
+      document.getElementById('excelPreviewContainer').classList.add('hidden');
+      document.getElementById('importModal').classList.remove('hidden');
+    }
+
+    function closeImportModal() {
+      document.getElementById('importModal').classList.add('hidden');
+    }
+
+    function handleExcelUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+
+          tempExcelData = jsonData.map((row, idx) => ({
+            id: 'import_' + Date.now() + '_' + idx,
+            supplier: row['Proveedor'] || row['PROVEEDOR'] || row['Razon Social'] || Object.values(row)[0] || 'Proveedor S/N',
+            number: row['Numero'] || row['NUMERO'] || row['Factura'] || row['N° Factura'] || 'S/N',
+            issueDate: row['Fecha'] || row['FECHA'] || new Date().toISOString().split('T')[0],
+            amount: parseFloat(row['Monto'] || row['MONTO'] || row['Total'] || 0),
+            category: row['Categoria'] || row['CATEGORIA'] || 'Insumos',
+            status: row['Estado'] || row['ESTADO'] || 'Pendiente',
+            userCreated: currentActiveUser
+          }));
+
+          renderExcelPreview(tempExcelData);
+        } catch (err) {
+          alert('Error al leer el archivo Excel. Asegúrate de que sea un formato válido.');
+          console.error(err);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function renderExcelPreview(data) {
+      const tbody = document.getElementById('excelPreviewBody');
+      tbody.innerHTML = '';
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-2">${escapeHtml(item.supplier)}</td>
+          <td class="p-2">${escapeHtml(item.number)}</td>
+          <td class="p-2">${item.issueDate}</td>
+          <td class="p-2 font-bold">${formatCurrency(item.amount)}</td>
+          <td class="p-2">${escapeHtml(item.status)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('excelPreviewContainer').classList.remove('hidden');
+    }
+
+    function confirmExcelImport() {
+      if (tempExcelData.length > 0) {
+        invoices = [...tempExcelData, ...invoices];
+        saveInvoicesToStorage();
+        closeImportModal();
+        renderApp();
+        alert(`¡Se importaron ${tempExcelData.length} facturas con éxito!`);
+      }
+    }
+
+    // Exportar a Excel
+    function exportToExcel() {
+      const dataToExport = invoices.map(i => ({
+        'Fecha Emision': i.issueDate,
+        'Proveedor': i.supplier,
+        'Numero Factura': i.number,
+        'Categoria': i.category,
+        'Monto Total': i.amount,
+        'Estado': i.status,
+        'Cargado Por': i.userCreated
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Facturas Nueva Semilla");
+      XLSX.writeFile(workbook, `Nueva_Semilla_Facturas_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+
+    // Cambiar usuario activo
+    function changeUser(val) {
+      if (val === 'Nuevo...') {
+        const newUser = prompt('Ingresa el nombre del nuevo usuario:');
+        if (newUser) {
+          currentActiveUser = newUser;
+          const select = document.getElementById('userSelector');
+          const opt = document.createElement('option');
+          opt.value = newUser;
+          opt.innerText = newUser;
+          opt.className = 'text-slate-800';
+          select.insertBefore(opt, select.lastElementChild);
+          select.value = newUser;
+        } else {
+          document.getElementById('userSelector').value = currentActiveUser;
+        }
+      } else {
+        currentActiveUser = val;
+      }
+    }
+
+    // Funciones Auxiliares
+    function readFileAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function viewFile(base64Data) {
+      const win = window.open();
+      if (win) {
+        win.document.write(`<iframe src="${base64Data}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+      }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text).replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+      });
+    }
+  </script>
+</body>
+</html>
