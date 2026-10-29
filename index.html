@@ -195,6 +195,71 @@
 
   </main>
 
+  <!-- MODAL: VER DETALLE DE FACTURA -->
+  <div id="viewModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-file-lines text-emerald-600"></i> Detalle del Comprobante
+        </h3>
+        <button onclick="closeViewModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm">
+        <div>
+          <p class="text-xs text-slate-400 uppercase font-semibold">Proveedor</p>
+          <p id="viewSupplier" class="font-bold text-slate-800 text-base">-</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 uppercase font-semibold">N° de Factura</p>
+          <p id="viewNumber" class="font-mono font-semibold text-slate-700">-</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 uppercase font-semibold">Fecha de Emisión</p>
+          <p id="viewIssueDate" class="text-slate-700">-</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 uppercase font-semibold">Fecha de Vencimiento</p>
+          <p id="viewDueDate" class="text-slate-700">-</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 uppercase font-semibold">Monto Total</p>
+          <p id="viewAmount" class="font-bold text-emerald-700 text-base">-</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 uppercase font-semibold">Categoría / Estado</p>
+          <div class="flex items-center gap-2 mt-1">
+            <span id="viewCategory" class="px-2 py-0.5 bg-slate-200 rounded text-xs font-medium">-</span>
+            <span id="viewStatusBadge">-</span>
+          </div>
+        </div>
+        <div class="sm:col-span-2 border-t pt-2 mt-1">
+          <p class="text-xs text-slate-400 uppercase font-semibold">Registrado por</p>
+          <p id="viewUser" class="text-slate-700 font-medium">-</p>
+        </div>
+      </div>
+
+      <!-- Sección de Archivos Adjuntos -->
+      <div class="space-y-3 pt-2 border-t">
+        <h4 class="text-xs font-bold text-slate-700 uppercase">Archivos Adjuntos</h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div id="viewInvoiceFileBox" class="border rounded-xl p-3 bg-slate-50 flex items-center justify-between">
+            <span class="text-xs font-medium text-slate-600"><i class="fa-solid fa-file-pdf text-red-500 mr-1"></i> Factura</span>
+            <div id="viewInvoiceFileAction">-</div>
+          </div>
+          <div id="viewPaymentFileBox" class="border rounded-xl p-3 bg-slate-50 flex items-center justify-between">
+            <span class="text-xs font-medium text-slate-600"><i class="fa-solid fa-receipt text-emerald-500 mr-1"></i> Comprobante de Pago</span>
+            <div id="viewPaymentFileAction">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-4 border-t">
+        <button onclick="closeViewModal()" class="px-5 py-2 text-sm bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-lg">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: AGREGAR / EDITAR FACTURA -->
   <div id="formModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl max-w-xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -524,7 +589,10 @@
             ${inv.paymentFile ? `<button onclick="viewFile('${inv.paymentFile}')" class="text-emerald-600 hover:underline"><i class="fa-solid fa-receipt font-normal"></i> Pago</button>` : ''}
           </td>
           <td class="p-4 text-center">
-            <div class="flex items-center justify-center gap-2">
+            <div class="flex items-center justify-center gap-1.5">
+              <button onclick="viewInvoiceDetails('${inv.id}')" title="Ver Detalle" class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded">
+                <i class="fa-solid fa-eye"></i>
+              </button>
               <button onclick="editInvoice('${inv.id}')" title="Editar" class="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-slate-100 rounded">
                 <i class="fa-solid fa-pen"></i>
               </button>
@@ -536,6 +604,53 @@
         `;
         tbody.appendChild(tr);
       });
+    }
+
+    // Funciones para el Modal de Visualización Detallada
+    function viewInvoiceDetails(id) {
+      const inv = invoices.find(i => i.id === id);
+      if (!inv) return;
+
+      document.getElementById('viewSupplier').innerText = inv.supplier;
+      document.getElementById('viewNumber').innerText = inv.number;
+      document.getElementById('viewIssueDate').innerText = inv.issueDate || '-';
+      document.getElementById('viewDueDate').innerText = inv.dueDate || 'Sin fecha de vencimiento';
+      document.getElementById('viewAmount').innerText = formatCurrency(inv.amount);
+      document.getElementById('viewCategory').innerText = inv.category;
+      document.getElementById('viewUser').innerText = inv.userCreated || 'Victoria';
+
+      // Estado badge
+      let badgeHtml = '';
+      if (inv.status === 'Pagada') {
+        badgeHtml = '<span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-semibold">Pagada</span>';
+      } else if (inv.status === 'Vencida') {
+        badgeHtml = '<span class="px-2.5 py-1 bg-rose-100 text-rose-800 rounded-full text-xs font-semibold">Vencida</span>';
+      } else {
+        badgeHtml = '<span class="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold">Pendiente</span>';
+      }
+      document.getElementById('viewStatusBadge').innerHTML = badgeHtml;
+
+      // Archivo Factura
+      const invAction = document.getElementById('viewInvoiceFileAction');
+      if (inv.invoiceFile) {
+        invAction.innerHTML = `<button onclick="viewFile('${inv.invoiceFile}')" class="px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold flex items-center gap-1"><i class="fa-solid fa-eye"></i> Ver Factura</button>`;
+      } else {
+        invAction.innerHTML = '<span class="text-xs text-slate-400">Sin archivo adjunto</span>';
+      }
+
+      // Archivo Comprobante de Pago
+      const payAction = document.getElementById('viewPaymentFileAction');
+      if (inv.paymentFile) {
+        payAction.innerHTML = `<button onclick="viewFile('${inv.paymentFile}')" class="px-3 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1"><i class="fa-solid fa-eye"></i> Ver Comprobante</button>`;
+      } else {
+        payAction.innerHTML = '<span class="text-xs text-slate-400">Sin archivo adjunto</span>';
+      }
+
+      document.getElementById('viewModal').classList.remove('hidden');
+    }
+
+    function closeViewModal() {
+      document.getElementById('viewModal').classList.add('hidden');
     }
 
     function toggleSelectOne(id, checked) {
